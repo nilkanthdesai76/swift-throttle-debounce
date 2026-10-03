@@ -1,31 +1,32 @@
 import Foundation
 
+final class DebouncerState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var workItem: DispatchWorkItem?
+
+    func schedule(interval: TimeInterval, queue: DispatchQueue, action: @escaping @Sendable () -> Void) {
+        lock.lock()
+        workItem?.cancel()
+
+        let item = DispatchWorkItem {
+            action()
+        }
+        workItem = item
+        lock.unlock()
+
+        queue.asyncAfter(deadline: .now() + interval, execute: item)
+    }
+}
+
 /// Creates a debounced action closure that postpones execution until after a specified quiet period has elapsed.
-///
-/// - Parameters:
-///   - interval: The quiet period duration required before execution fires.
-///   - queue: The dispatch queue on which the action should execute. Defaults to `.main`.
-///   - action: The closure to execute once the quiet period elapses.
-/// - Returns: A closure wrapping the debounced execution.
 public func debounce(
     interval: TimeInterval,
     queue: DispatchQueue = .main,
     action: @escaping @Sendable () -> Void
 ) -> @Sendable () -> Void {
-    let lock = NSLock()
-    var workItem: DispatchWorkItem?
-
+    let state = DebouncerState()
     return {
-        lock.lock()
-        workItem?.cancel()
-
-        let newWorkItem = DispatchWorkItem {
-            action()
-        }
-        workItem = newWorkItem
-        lock.unlock()
-
-        queue.asyncAfter(deadline: .now() + interval, execute: newWorkItem)
+        state.schedule(interval: interval, queue: queue, action: action)
     }
 }
 

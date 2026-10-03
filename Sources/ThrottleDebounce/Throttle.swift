@@ -1,34 +1,42 @@
 import Foundation
 
+final class ThrottlerState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lastExecutionTime: DispatchTime?
+
+    func shouldExecute(interval: TimeInterval) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let now = DispatchTime.now()
+        guard let last = lastExecutionTime else {
+            lastExecutionTime = now
+            return true
+        }
+
+        let intervalNano = UInt64(interval * 1_000_000_000)
+        let elapsed = now.uptimeNanoseconds - last.uptimeNanoseconds
+
+        if elapsed >= intervalNano {
+            lastExecutionTime = now
+            return true
+        }
+        return false
+    }
+}
+
 /// Creates a throttled action closure that limits invocation rate to at most once per specified time interval.
-///
-/// - Parameters:
-///   - interval: The minimum time duration between executions.
-///   - queue: The dispatch queue on which the action should execute. Defaults to `.main`.
-///   - action: The closure to execute when permitted.
-/// - Returns: A closure wrapping the throttled execution.
 public func throttle(
     interval: TimeInterval,
     queue: DispatchQueue = .main,
     action: @escaping @Sendable () -> Void
 ) -> @Sendable () -> Void {
-    let lock = NSLock()
-    var lastExecutionTime: DispatchTime = .distantPast
-
+    let state = ThrottlerState()
     return {
-        lock.lock()
-        let now = DispatchTime.now()
-        let intervalNano = UInt64(interval * 1_000_000_000)
-        let elapsed = now.uptimeNanoseconds - lastExecutionTime.uptimeNanoseconds
-
-        if elapsed >= intervalNano {
-            lastExecutionTime = now
-            lock.unlock()
+        if state.shouldExecute(interval: interval) {
             queue.async {
                 action()
             }
-        } else {
-            lock.unlock()
         }
     }
 }
