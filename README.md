@@ -1,5 +1,6 @@
 # Throttle & Debounce for Swift ⏱️
 
+[![CI](https://github.com/nilkanthdesai76/swift-throttle-debounce/actions/workflows/ci.yml/badge.svg)](https://github.com/nilkanthdesai76/swift-throttle-debounce/actions)
 A thread-safe, zero-dependency Swift package providing **Throttle** and **Debounce** rate-limiters for GCD dispatch queues and modern Swift Concurrency (`AsyncThrottler`, `AsyncDebouncer`).
 
 [![Swift](https://img.shields.io/badge/Swift-5.9%20%7C%206.0-orange?style=flat-square&logo=swift)](https://swift.org)
